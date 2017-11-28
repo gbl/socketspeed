@@ -122,10 +122,10 @@ endconn:
 
     printf ("read %ld bytes in %ld.%06ld seconds from %d.%d.%d.%d, %ld MByte/s\n", 
             sent, between.tv_sec,between.tv_usec,
-            ((unsigned char *)(&client.sin_addr.s_addr))[0],
-            ((unsigned char *)(&client.sin_addr.s_addr))[1], 
-            ((unsigned char *)(&client.sin_addr.s_addr))[2],
-            ((unsigned char *)(&client.sin_addr.s_addr))[3],
+            ((unsigned char *)(&server.sin_addr.s_addr))[0],
+            ((unsigned char *)(&server.sin_addr.s_addr))[1], 
+            ((unsigned char *)(&server.sin_addr.s_addr))[2],
+            ((unsigned char *)(&server.sin_addr.s_addr))[3],
             sent/(between.tv_sec*1000000+between.tv_usec)
             );
     shutdown(newsock, SHUT_RDWR);
