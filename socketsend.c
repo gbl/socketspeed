@@ -37,11 +37,21 @@ int main(int argc, char** argv) {
     }
     
 #ifdef  __MINGW64_VERSION_MAJOR
-        WSADATA blah;
-        if ((sock=WSAStartup(MAKEWORD(2,2), &blah))!=0) {
-                fprintf(stderr, "WSAStartup: Error %d (%x)\n", sock, sock);
-                exit(1);
-        }
+    WSADATA blah;
+    if ((sock=WSAStartup(MAKEWORD(2,2), &blah))!=0) {
+	    fprintf(stderr, "WSAStartup: Error %d (%x)\n", sock, sock);
+	    exit(1);
+    }
+
+    if (!strcmp(argv[1], "-core")) {
+	HANDLE process=GetCurrentProcess();
+	DWORD mask=1<<atoi(argv[2]);
+	if (!SetProcessAffinityMask(process, mask)) {
+		fprintf(stderr, "set my mask failed, continuing on all cores\n");
+	}
+	argv+=2;
+	argc-=2;
+    }
 #endif
 
     if ((he=gethostbyname(argv[1]))==NULL) {
@@ -65,8 +75,21 @@ int main(int argc, char** argv) {
         case 'g': case 'G': size*=1024*1024*1024; break;
     }
     
-    if (argc>4)
-        count=atoi(argv[4]);
+    if (argc>4) {
+	long long parm4=atoll(argv[4]);
+	int issize=0;
+        endsize=argv[4]+strlen(argv[4])-1;
+        switch (*endsize) {
+            case 'k': case 'K': parm4*=1024; issize=1; break;
+            case 'm': case 'M': parm4*=1024*1024; issize=1; break;
+            case 'g': case 'G': parm4*=1024*1024*1024; issize=1; break;
+        }
+	if (issize) {
+	    count=(int)(parm4/size);
+	} else {
+            count=(int) parm4;
+	}
+    }
     
     printf("listening on IP %d.%d.%d.%d port %d to send %d packets of size %ld\n",
             (unsigned char) he->h_addr_list[0][0],
@@ -100,7 +123,8 @@ int main(int argc, char** argv) {
     
     while ((newsock=accept(sock, (struct sockaddr *)&client, &(int){sizeof client}))>=0) {
         int i;
-        long rest, n, sent=0;
+        long rest, n;
+	long long sent=0;
         struct timeval before, after, between;
         gettimeofday(&before, NULL);
         for (i=0; i<count; i++) {
@@ -125,7 +149,7 @@ endconn:
 	if (between.tv_sec==0 && between.tv_usec==0) {
 		between.tv_sec=1;
 	}
-        printf ("sent %ld bytes in %ld.%06ld seconds to %d.%d.%d.%d, %ld MByte/s\n", 
+        printf ("sent %lld bytes in %ld.%06ld seconds to %d.%d.%d.%d, %lld MByte/s\n", 
                 sent, between.tv_sec,between.tv_usec,
                 ((unsigned char *)(&client.sin_addr.s_addr))[0],
                 ((unsigned char *)(&client.sin_addr.s_addr))[1], 
@@ -134,6 +158,7 @@ endconn:
                 sent/(between.tv_sec*1000000+between.tv_usec)
                 );
         shutdown(newsock, SHUT_RDWR);
+	fflush(stdout);
     }
     
     return (EXIT_SUCCESS);
